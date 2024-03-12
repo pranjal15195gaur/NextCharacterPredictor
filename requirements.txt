@@ -1,9 +1,7 @@
-streamlit
+streamlit==1.32.0
 requests==2.24.0
 requests-html==0.10.0
 st-annotated-text
-matplotlib
 numpy
-scikit-learn
 torch==1.7.1
 torchvision==0.8.2
