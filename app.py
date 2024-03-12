@@ -5,10 +5,8 @@ from torch import nn
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-import torch._dynamo
 import warnings
 warnings.filterwarnings("ignore")
-torch._dynamo.config.suppress_errors = True
 
 if (torch.cuda.is_available()):
     device = torch.device("cuda")
