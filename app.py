@@ -4,9 +4,7 @@ import torch.nn.functional as F
 from torch import nn
 import matplotlib.pyplot as plt
 import numpy as np
-from latex import latexify, format_axes
 import time
-from sklearn.manifold import TSNE
 import torch._dynamo
 import warnings
 warnings.filterwarnings("ignore")
