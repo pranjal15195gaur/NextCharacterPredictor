@@ -89,7 +89,7 @@ if (select == "Tolstoy's War and Peace"):
     block_size = 100
     emb_dim = 256
     model = NextChar(block_size, len(stoi), emb_dim, 100).to(device)
-            
+    model = torch.compile(model)   
     if (option == "No"):
         seed_text = st.text_input("Enter the seed text (for alphanumeric characters, only lowercase allowed)")
     else:
@@ -137,7 +137,7 @@ elif (select == "Alice in the Wonderland"):
     block_size = 100
     emb_dim = 256
     model = NextChar(block_size, len(stoi), emb_dim, 100).to(device)
-    
+    model = torch.compile(model)
     if (option == "No"):
         seed_text = st.text_input("Enter the seed text (no digits)")
     else:
