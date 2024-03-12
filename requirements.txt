@@ -3,5 +3,5 @@ requests
 requests-html
 st-annotated-text
 numpy
-torch==1.7.1
-torchvision==0.8.2
+torch
+torchvision
