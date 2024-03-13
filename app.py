@@ -56,7 +56,7 @@ def stream_data(str):
 
 st.write("""
          # Next $k$ character predictor
-         ### Choose amongst the following corpuses and generatte the next $k$ characters
+         ### Choose amongst the following corpora and generate the next $k$ characters
          """)
 st.sidebar.title("Next $k$ character predictor")
 st.sidebar.caption("App created by team TensionFlow using Streamlit as a part of the Machine Learning Course ES335")
