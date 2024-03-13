@@ -61,7 +61,7 @@ st.write("""
 st.sidebar.title("Next $k$ character predictor")
 st.sidebar.caption("App created by team TensionFlow using Streamlit as a part of the Machine Learning Course ES335")
 
-select = st.selectbox("Select the Corpus", ["Tolstoy's War and Peace", "Alice in the Wonderland"])
+select = st.selectbox("Select the Corpus", ["Atomic Habits: James Clear", "Tolstoy's War and Peace", "Alice in the Wonderland"])
 
 
 k = st.slider("Number of Characters to be generated $k$", 50, 2000)
@@ -158,6 +158,73 @@ elif (select == "Alice in the Wonderland"):
         st.subheader("Seed Text")
         st.write_stream(stream_data(seed_text))
         model.load_state_dict(torch.load("modelWonder.pth", map_location = device))
+        my_str = generate_text(model, itos, stoi, block_size, k, seed_text)
+        decoded_string = bytes(my_str, "utf-8").decode("unicode_escape")
+        st.header("Generated Text")
+        st.write_stream(stream_data(decoded_string))
+        st.sidebar.subheader("Seed Text")
+        st.sidebar.write_stream(stream_data(seed_text))
+        st.sidebar.header("Generated Text")
+        st.sidebar.write_stream(stream_data(decoded_string))
+        
+elif (select == "Atomic Habits: James Clear"):
+    fileAtomic = open("atomic.txt", "r")
+    atomic = fileAtomic.read()
+    print(atomic[:1000])
+    new_atomic = ""
+    for char in atomic:
+        if char in ['\x0c', '£', 'Ü', 'ä', 'æ', 'è', 'é', 'ò', 'ó', 'ø', 'ü', '‐', '–', '—', '‘', '’', '“', '”', '−', '$', '%', '#', '&']:
+            continue
+        new_atomic += char.lower()
+
+    characters = sorted(list(set(new_atomic)))
+
+    stoi = {s : i + 1 for i, s in enumerate(characters)}
+    stoi["~"] = 0 ## Pad character
+    itos = {i : s for s, i in stoi.items()}
+    
+    block_size = 100
+    emb_dim = 50
+    emb = torch.nn.Embedding(len(stoi), emb_dim)
+    
+    
+    class ImprovedNextChar(nn.Module):
+        def __init__(self, block_size, vocab_size, emb_dim, hidden_size):
+            super().__init__()
+            self.emb = nn.Embedding(vocab_size, emb_dim)
+            self.rnn = nn.LSTM(emb_dim, hidden_size, num_layers = 2, batch_first = True)
+            self.fc = nn.Linear(hidden_size * block_size, vocab_size)
+
+        def forward(self, x):
+            x = self.emb(x)
+            x, _ = self.rnn(x)
+            x = x.contiguous().view(x.size(0), -1)
+            x = self.fc(x)
+            return x
+    
+    model = ImprovedNextChar(block_size, len(stoi), emb_dim, 50).to(device)
+    model = torch.compile(model)
+    
+    if (option == "No"):
+        seed_text = st.text_input("Enter the seed text (for alphanumeric characters, only lowercase allowed)")
+    else:
+        l = st.slider("Select the length of seed_text", 20, k)
+        
+        start = np.random.randint(0, len(new_atomic) - block_size - 1)
+        end = start + l
+        while new_atomic[start] != " ":
+            start += 1
+
+        while new_atomic[end] != " ":
+            end -= 1
+
+        seed_text = new_atomic[start + 1 : end]
+        
+    btn = st.button("Generate Text")
+    if btn:
+        st.subheader("Seed Text")
+        st.write_stream(stream_data(seed_text))
+        model.load_state_dict(torch.load("modelAtomic.pth", map_location = device))
         my_str = generate_text(model, itos, stoi, block_size, k, seed_text)
         decoded_string = bytes(my_str, "utf-8").decode("unicode_escape")
         st.header("Generated Text")
