@@ -28,8 +28,23 @@ class NextChar(nn.Module):
     return x    
 
 
+
+st.write("""
+         # Next $k$ character predictor
+         ### Choose amongst the following corpuses and generatte the next $k$ characters
+         """)
+st.sidebar.title("Next $k$ character predictor")
+st.sidebar.caption("App created by team TensionFlow using Streamlit as a part of the Machine Learning Course ES335")
+
+select = st.selectbox("Select the Corpus", ["Gulliver's Travels", "Atomic Habits: James Clear", "Tolstoy's War and Peace", "Alice in the Wonderland"])
+
+seed_number = st.slider("Choose the Seed Number", 0, 10000)
+k = st.slider("Number of Characters to be generated $k$", 50, 2000)
+
+option = st.radio("Generate the Seed Text?", ("Yes", "No"))
+
 g = torch.Generator()
-g.manual_seed(42)
+g.manual_seed(seed_number)
 
 def generate_text(model, itos, stoi, block_size, max_len, start_str = None):
 
@@ -54,22 +69,77 @@ def stream_data(str):
             time.sleep(0.03)
             
 
-st.write("""
-         # Next $k$ character predictor
-         ### Choose amongst the following corpuses and generatte the next $k$ characters
-         """)
-st.sidebar.title("Next $k$ character predictor")
-st.sidebar.caption("App created by team TensionFlow using Streamlit as a part of the Machine Learning Course ES335")
+if (select == "Gulliver's Travels"):
+    fileGulliver = open("gulliver.txt", "r")
+    gulliver = fileGulliver.read()
+    new_gulliver = ""
+    for char in gulliver:
+        if char in ['$', '%', '&', 'æ', 'œ', '–', '—', '‘', '’', '“', '”', '•', '™']:
+            continue
+        new_gulliver += char.lower()
 
-select = st.selectbox("Select the Corpus", ["Atomic Habits: James Clear", "Tolstoy's War and Peace", "Alice in the Wonderland"])
+    characters = sorted(list(set(new_gulliver)))
+    stoi = {s : i + 1 for i, s in enumerate(characters)}
+    stoi["+"] = 0 ## Pad Character
+    itos = {i : s for s, i in stoi.items()}
+    
+    block_size = 20
+    emb_dim = st.selectbox("Select the Embedding Dimension (Block Size = 20 Fixed)", [15, 25, 50])
 
+    class NextChar(nn.Module):
+        def __init__(self, block_size, vocab_size, emb_dim, hidden_size1, hidden_size2):
+            super().__init__()
+            self.emb = nn.Embedding(vocab_size, emb_dim)
+            self.lin1 = nn.Linear(block_size * emb_dim, hidden_size1)
+            self.lin2 = nn.Linear(hidden_size1, hidden_size2)
+            self.lin3 = nn.Linear(hidden_size2, vocab_size)
 
-k = st.slider("Number of Characters to be generated $k$", 50, 2000)
+        def forward(self, x):
+            x = self.emb(x)
+            x = x.view(x.shape[0], -1)
+            x = torch.tanh(self.lin1(x))
+            x = torch.tanh(self.lin2(x))
+            x = self.lin3(x)
+            return x
+        
+    if (option == "No"):
+        seed_text = st.text_input("Enter the seed text (no digits)")
+    else:
+        l = st.slider("Select the length of seed_text", 20, k)
+        
+        start = np.random.randint(0, len(new_gulliver) - block_size - 1)
+        end = start + l
+        while new_gulliver[start] != " ":
+            start += 1
 
-option = st.radio("Generate the Seed Text?", ("Yes", "No"))
+        while new_gulliver[end] != " ":
+            end -= 1
 
-
-if (select == "Tolstoy's War and Peace"):
+        seed_text = new_gulliver[start + 1 : end]
+    
+    
+    btn = st.button("Generate Text")
+    if btn:
+        st.subheader("Seed Text")
+        st.write_stream(stream_data(seed_text))
+        model = NextChar(block_size, len(stoi), emb_dim, 100, 75).to(device)
+        model = torch.compile(model)
+        if emb_dim == 15:
+            model.load_state_dict(torch.load("modelGulliver20_15.pth", map_location = device))
+        elif emb_dim == 25:
+            model.load_state_dict(torch.load("modelGulliver20_25.pth", map_location = device))
+        elif emb_dim == 50:
+            model.load_state_dict(torch.load("modelGulliver20_50.pth", map_location = device))
+        my_str = generate_text(model, itos, stoi, block_size, k, seed_text)
+        decoded_string = bytes(my_str, "utf-8").decode("unicode_escape")
+        st.header("Generated Text")
+        st.write_stream(stream_data(decoded_string))
+        st.sidebar.subheader("Seed Text")
+        st.sidebar.write_stream(stream_data(seed_text))
+        st.sidebar.header("Generated Text")
+        st.sidebar.write_stream(stream_data(decoded_string))
+        
+elif (select == "Tolstoy's War and Peace"):
     
     fileTolstoy = open("tolstoy.txt", "r")
     tolstoy = fileTolstoy.read()
@@ -122,7 +192,6 @@ if (select == "Tolstoy's War and Peace"):
 elif (select == "Alice in the Wonderland"):
     fileWonder = open("wonderland.txt", "r")
     wonder = fileWonder.read()
-    print(wonder[:1000])
     new_wonder = ""
     for char in wonder:
         if char in ['ù', '—', '‘', '’', '“', '”']:
@@ -170,7 +239,6 @@ elif (select == "Alice in the Wonderland"):
 elif (select == "Atomic Habits: James Clear"):
     fileAtomic = open("atomic.txt", "r")
     atomic = fileAtomic.read()
-    print(atomic[:1000])
     new_atomic = ""
     for char in atomic:
         if char in ['\x0c', '£', 'Ü', 'ä', 'æ', 'è', 'é', 'ò', 'ó', 'ø', 'ü', '‐', '–', '—', '‘', '’', '“', '”', '−', '$', '%', '#', '&']:
