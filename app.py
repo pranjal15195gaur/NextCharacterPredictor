@@ -68,7 +68,6 @@ def stream_data(str):
             yield word + " "
             time.sleep(0.03)
             
-
 if (select == "Gulliver's Travels"):
     fileGulliver = open("gulliver.txt", "r")
     gulliver = fileGulliver.read()
