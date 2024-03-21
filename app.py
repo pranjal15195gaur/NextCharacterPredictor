@@ -172,7 +172,7 @@ elif (select == "EnWiki8"):
             return x
         
     if (option == "No"):
-        seed_text = st.text_input("Enter the seed text (no digits)")
+        seed_text = st.text_input("Enter the seed text")
     else:
         l = st.slider("Select the length of seed_text", 20, 1000)
         
