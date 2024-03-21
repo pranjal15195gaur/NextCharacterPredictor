@@ -36,10 +36,10 @@ st.write("""
 st.sidebar.title("Next $k$ character predictor")
 st.sidebar.caption("App created by team TensionFlow using Streamlit as a part of the Machine Learning Course ES335")
 
-select = st.selectbox("Select the Corpus", ["Gulliver's Travels", "Atomic Habits: James Clear", "Tolstoy's War and Peace", "Alice in the Wonderland"])
+select = st.selectbox("Select the Corpus", ["Gulliver's Travels", "EnWiki8", "Atomic Habits: James Clear", "Tolstoy's War and Peace", "Alice in the Wonderland"])
 
 seed_number = st.slider("Choose the Seed Number", 0, 10000)
-k = st.slider("Number of Characters to be generated $k$", 50, 2000)
+k = st.slider("Number of Characters to be generated $k$", 50, 10000)
 
 option = st.radio("Generate the Seed Text?", ("Yes", "No"))
 
@@ -104,7 +104,7 @@ if (select == "Gulliver's Travels"):
     if (option == "No"):
         seed_text = st.text_input("Enter the seed text (no digits)")
     else:
-        l = st.slider("Select the length of seed_text", 20, k)
+        l = st.slider("Select the length of seed_text", 20, 1000)
         
         start = np.random.randint(0, len(new_gulliver) - block_size - 1)
         end = start + l
@@ -129,6 +129,71 @@ if (select == "Gulliver's Travels"):
             model.load_state_dict(torch.load("modelGulliver20_25.pth", map_location = device))
         elif emb_dim == 50:
             model.load_state_dict(torch.load("modelGulliver20_50.pth", map_location = device))
+        my_str = generate_text(model, itos, stoi, block_size, k, seed_text)
+        decoded_string = bytes(my_str, "utf-8").decode("unicode_escape")
+        st.header("Generated Text")
+        st.write_stream(stream_data(decoded_string))
+        st.sidebar.subheader("Seed Text")
+        st.sidebar.write_stream(stream_data(seed_text))
+        st.sidebar.header("Generated Text")
+        st.sidebar.write_stream(stream_data(decoded_string))
+
+elif (select == "EnWiki8"):
+    with open("./enwik8", 'r') as xml_file:
+        wiki = xml_file.read()
+    new_wiki = ""
+    wiki = wiki[:(len(wiki)//10)]
+    for char in wiki:
+        if char not in ['\t', '\n', ' ', '!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~']:
+            continue
+        new_wiki += char
+
+    characters = sorted(list(set(new_wiki)))
+    stoi = {s : i + 1 for i, s in enumerate(characters)}
+    stoi["`"] = 0 ## Pad Character
+    itos = {i : s for s, i in stoi.items()}
+    
+    block_size = 50
+    emb_dim = 25
+    class NextChar(nn.Module):
+        def __init__(self, block_size, vocab_size, emb_dim, hidden_size1, hidden_size2):
+            super().__init__()
+            self.emb = nn.Embedding(vocab_size, emb_dim)
+            self.lin1 = nn.Linear(block_size * emb_dim, hidden_size1)
+            self.lin2 = nn.Linear(hidden_size1, hidden_size2)
+            self.lin3 = nn.Linear(hidden_size2, vocab_size)
+
+        def forward(self, x):
+            x = self.emb(x)
+            x = x.view(x.shape[0], -1)
+            x = torch.tanh(self.lin1(x))
+            x = torch.tanh(self.lin2(x))
+            x = self.lin3(x)
+            return x
+        
+    if (option == "No"):
+        seed_text = st.text_input("Enter the seed text (no digits)")
+    else:
+        l = st.slider("Select the length of seed_text", 20, 1000)
+        
+        start = np.random.randint(0, len(new_wiki) - block_size - 1)
+        end = start + l
+        while new_wiki[start] != " ":
+            start += 1
+
+        while new_wiki[end] != " ":
+            end -= 1
+
+        seed_text = new_wiki[start + 1 : end]
+    
+    
+    btn = st.button("Generate Text")
+    if btn:
+        st.subheader("Seed Text")
+        st.write_stream(stream_data(seed_text))
+        model = NextChar(block_size, len(stoi), emb_dim, 300, 100).to(device)
+        model = torch.compile(model)
+        model.load_state_dict(torch.load("modelWiki.pth", map_location = device))
         my_str = generate_text(model, itos, stoi, block_size, k, seed_text)
         decoded_string = bytes(my_str, "utf-8").decode("unicode_escape")
         st.header("Generated Text")
@@ -162,7 +227,7 @@ elif (select == "Tolstoy's War and Peace"):
     if (option == "No"):
         seed_text = st.text_input("Enter the seed text (for alphanumeric characters, only lowercase allowed)")
     else:
-        l = st.slider("Select the length of seed_text", 20, k)
+        l = st.slider("Select the length of seed_text", 20, 1000)
         
         start = np.random.randint(0, len(new_tolstoy) - block_size - 1)
         end = start + l
@@ -209,7 +274,7 @@ elif (select == "Alice in the Wonderland"):
     if (option == "No"):
         seed_text = st.text_input("Enter the seed text (no digits)")
     else:
-        l = st.slider("Select the length of seed_text", 20, k)
+        l = st.slider("Select the length of seed_text", 20, 1000)
         
         start = np.random.randint(0, len(new_wonder) - block_size - 1)
         end = start + l
@@ -275,7 +340,7 @@ elif (select == "Atomic Habits: James Clear"):
     if (option == "No"):
         seed_text = st.text_input("Enter the seed text (for alphanumeric characters, only lowercase allowed)")
     else:
-        l = st.slider("Select the length of seed_text", 20, k)
+        l = st.slider("Select the length of seed_text", 20, 1000)
         
         start = np.random.randint(0, len(new_atomic) - block_size - 1)
         end = start + l
